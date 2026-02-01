@@ -10,7 +10,7 @@ It implements the experimental validation described in:
 > Braga, C. M., Serrano, M. A., Fernández-Medina, E.  
 > (Submitted to CIbSE 2026)
 
-The purpose of this software is **not** to improve answer quality or normative correctness, but to **observe and constrain reasoning behavior** by controlling how retrieved fragments are composed *after retrieval and before generation*.
+The purpose of this software is **not** to improve answer quality or normative correctness, but to **observe reasoning behavior** by controlling how retrieved fragments are composed *after retrieval and before generation*.
 
 ---
 
@@ -47,7 +47,9 @@ Notes:
 
 ## Experimental Design
 
-The validation is a **controlled experiment** where the *same retrieval pipeline* is reused across all configurations.  
+The validation is a **controlled qualitative experiment**.
+
+The same retrieval pipeline is reused across all configurations.  
 Only the **post-retrieval context construction strategy** changes.
 
 ### Context Construction Strategies
@@ -72,7 +74,7 @@ Only the **post-retrieval context construction strategy** changes.
   - language model
   - decoding parameters
 
-This ensures that observed differences are attributable **only** to context composition.
+Observed differences are therefore attributable **only** to context composition.
 
 ---
 
@@ -103,10 +105,6 @@ dsrag-inferential-control/
 │
 ├── llm/
 │   └── generate.py           # LLM invocation wrapper
-│
-├── evaluation/
-│   ├── indicators.py         # Qualitative evaluation indicators
-│   └── human_template.json   # Template for manual review
 │
 ├── results/
 │   └── *.json                # Contexts, prompts and responses
@@ -153,7 +151,7 @@ Each provider should contain **three documents**.
 
 ### 2. Build Vector Indexes
 
-Create FAISS indexes for each Data Provider using the indexing utilities (e.g., via `core.create_faiss_index`).  
+Create FAISS indexes for each Data Provider using the indexing utilities.  
 Indexes are stored under `indexes/federated/`.
 
 ---
@@ -174,23 +172,11 @@ This script:
 
 ---
 
-## Practical Notes
-
-- Temperature is set to **0** to ensure deterministic behavior.
-- The same model instance is used across all configurations.
-- Context construction is the **only experimental variable**.
-- All intermediate artifacts are stored for auditability and qualitative inspection.
-
----
-
 ## Reproducibility Notes
 
-This repository is designed to support:
-- controlled comparison,
-- reasoning traceability,
-- qualitative evaluation of inferential behavior.
-
-It is **not** intended as a production-ready RAG system.
+- Evaluation is **qualitative**, based on inspection of the generated traces.
+- No automatic metrics are computed by the framework.
+- The repository is intended as a **research artifact**, not a production system.
 
 ---
 
@@ -205,3 +191,6 @@ If you use or adapt this code, please cite:
 > CIbSE 2026 (under review)
 
 ---
+
+
+
