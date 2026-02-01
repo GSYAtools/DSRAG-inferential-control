@@ -62,6 +62,7 @@ Only the **post-retrieval context construction strategy** changes.
 
 - **S3 – Inferential Composition Control**  
   Selective separation and conservative composition based on semantic roles and local tension.
+  **Implementation note:** role assignment and tension computation are implemented *inside* `context_builders/semantic_control.py` (see details below).
 
 ### Fixed Experimental Conditions
 
@@ -78,7 +79,7 @@ Observed differences are therefore attributable **only** to context composition.
 
 ---
 
-## Project Structure
+## Project Structure (actual)
 
 ```
 dsrag-inferential-control/
@@ -92,25 +93,22 @@ dsrag-inferential-control/
 │
 ├── queries.py                # Fixed set of evaluation queries
 │
-├── run_experiment.py         # Main experiment runner (S1, S2, S3)
+├── run_experiment.py         # Main experiment runner (S1, S2, S3) - invokes LangChain ChatOpenAI
 │
 ├── context_builders/
 │   ├── base.py               # S1: baseline concatenation
 │   ├── hard_separation.py    # S2: provider-based separation
-│   └── semantic_control.py   # S3: inferential composition control
+│   └── semantic_control.py   # S3: inferential composition control (includes role assignment & tension)
 │
-├── semantic/
-│   ├── role_assignment.py    # Semantic role assignment
-│   └── tension.py            # Local semantic tension computation
-│
-├── llm/
-│   └── generate.py           # LLM invocation wrapper
+├── core.py                   # Utilities (document loading, index creation, retrieval helpers)
 │
 ├── results/
 │   └── *.json                # Contexts, prompts and responses
 │
 └── README.md
 ```
+
+**Note:** There is no separate `semantic/` or `llm/` directory in this codebase. The role assignment and tension logic are implemented internally within `context_builders/semantic_control.py`. LLM calls are performed directly via LangChain in `run_experiment.py` (ChatOpenAI).
 
 ---
 
@@ -133,8 +131,6 @@ Create a `.env` file:
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
----
-
 ### 1. Prepare the Corpus
 
 Place the documents in:
@@ -147,18 +143,14 @@ data/dp3/
 
 Each provider should contain **three documents**.
 
----
-
 ### 2. Build Vector Indexes
 
-Create FAISS indexes for each Data Provider using the indexing utilities.  
+Create FAISS indexes for each Data Provider using the indexing utilities in `core.py`.  
 Indexes are stored under `indexes/federated/`.
-
----
 
 ### 3. Run the Experiment
 
-Execute the **single experimental runner**, which evaluates all three strategies:
+Execute the single experimental runner, which evaluates all three strategies sequentially:
 
 ```bash
 python run_experiment.py
@@ -166,9 +158,18 @@ python run_experiment.py
 
 This script:
 - runs the same retrieval pipeline for each query,
-- applies S1, S2 and S3 sequentially,
-- invokes the LLM with identical parameters,
-- stores full traces (contexts, prompts, outputs) in `results/`.
+- constructs contexts using S1, S2 and S3 (S3 uses internal role assignment/tension),
+- invokes the LLM with identical parameters (LangChain ChatOpenAI, temperature=0),
+- stores full traces (contexts, prompts, outputs, latency) in `results/`.
+
+---
+
+## Implementation Notes (technical pointers)
+
+- **Role assignment**: implemented deterministically inside `context_builders/semantic_control.py` using lightweight Spanish-language linguistic cues (deontic keywords, modal verbs, conditional markers). See `assign_roles` in that file.
+- **Tension computation**: pairwise simple conflict scoring inside `semantic_control.py` (function `pair_tension` / local aggregation). High-tension fragment pairs are separated into different context blocks.
+- **Conservative composition**: descriptive fragments (transversal technical safeguards) are allowed in multiple contexts; normative/alternative fragments are kept separated when tension is detected.
+- **LLM**: the experiment uses LangChain's `ChatOpenAI` directly (see `run_experiment.py`). There is no separate LLM wrapper module in this snapshot.
 
 ---
 
@@ -189,8 +190,6 @@ If you use or adapt this code, please cite:
 > Braga, C. M., Serrano, M. A., Fernández-Medina, E.  
 > *Engineering Inferential Composition Control for Federated RAG in Data Spaces*  
 > CIbSE 2026 (under review)
-
----
 
 
 
