@@ -2,66 +2,77 @@
 
 ## Overview
 
-This repository provides a **reproducible research framework** for studying **inferential composition control** in **federated Retrieval-Augmented Generation (RAG)** systems operating over **Data Spaces**.
+This repository provides a **reproducible research framework** for validating **inferential composition control** in **federated Retrieval-Augmented Generation (RAG)** systems operating over **Data Spaces**.
 
-The software implements and validates the approach presented in:
+It implements the experimental validation described in:
 
 > *Engineering Inferential Composition Control for Federated RAG in Data Spaces*  
 > Braga, C. M., Serrano, M. A., Fernández-Medina, E.  
 > (Submitted to CIbSE 2026)
 
-The goal of this repository is **not** to improve answer fluency or accuracy, but to **control how retrieved fragments are composed before generation**, in order to prevent **inferential collapse** in regulated and heterogeneous environments.
+The purpose of this software is **not** to improve answer quality or normative correctness, but to **observe and constrain reasoning behavior** by controlling how retrieved fragments are composed *after retrieval and before generation*.
 
 ---
 
 ## Research Context
 
 Federated Data Spaces integrate autonomous and semantically heterogeneous data providers.  
-While Retrieval-Augmented Generation (RAG) improves grounding and traceability, standard RAG pipelines implicitly assume that all retrieved fragments can be safely merged into a single generation context.
+Standard RAG pipelines implicitly assume that all retrieved fragments can be merged into a single generation context.
 
-In regulated domains, this assumption may lead to **invalid inferences**, such as:
-- treating ethical recommendations as legally binding obligations,
+In regulated domains, this may lead to **inferential collapse**, such as:
+- treating ethical guidance as legally binding,
 - collapsing alternative legal bases into universal requirements,
-- masking conditional applicability under global prompts.
+- losing conditional applicability under global queries.
 
-This repository operationalizes **inferential composition control** by explicitly structuring the generation context **before** invoking the language model.
+This repository operationalizes **inferential composition control** by making context construction an explicit and auditable step in the RAG pipeline.
 
 ---
 
 ## Relation to Previous Work (DSRAG – IDEAL 2025)
 
-This repository **extends and reuses** the experimental framework introduced in:
+This repository **extends and reuses** the experimental architecture introduced in:
 
 > *Guided and Federated RAG: Architectural Models for Trustworthy AI in Data Spaces*  
 > IDEAL 2025
 
-The original framework is available at:  
+Original repository (frozen research artifact):  
 https://github.com/GSYAtools/DSRAG
 
-**Important notes:**
-- The original DSRAG repository is **kept frozen** as a research artifact associated with the IDEAL 2025 paper.
-- This repository **does not modify** the original artifact.
-- Selected components of the DSRAG architecture are **copied and refactored** to support inferential composition control.
-
-In short:
-
-> **DSRAG (IDEAL 2025)** evaluates *where* retrieval and generation occur.  
-> **This repository (CIbSE 2026)** evaluates *how* retrieved information is composed for reasoning.
+Notes:
+- The original DSRAG repository remains **unchanged** and frozen.
+- This repository **reuses and refactors** parts of its federated RAG architecture.
+- The focus here is **inferential composition**, not architectural placement of retrieval or generation.
 
 ---
 
-## What This Repository Provides
+## Experimental Design
 
-- A modular implementation of **three context construction strategies**:
-  - **Baseline**: standard RAG context concatenation
-  - **Hard Separation**: provider-based grouping without inferential control
-  - **Inferential Control**: role-aware, tension-based context construction
-- A reproducible experimental setup using:
-  - the same corpus,
-  - the same queries,
-  - the same retrieval results,
-  across all configurations
-- Scripts and artifacts to **observe and compare reasoning behavior**, rather than optimize model output.
+The validation is a **controlled experiment** where the *same retrieval pipeline* is reused across all configurations.  
+Only the **post-retrieval context construction strategy** changes.
+
+### Context Construction Strategies
+
+- **S1 – Baseline**  
+  Standard federated RAG: all retrieved fragments are concatenated.
+
+- **S2 – Hard Separation**  
+  Fragments are grouped strictly by Data Provider.
+
+- **S3 – Inferential Composition Control**  
+  Selective separation and conservative composition based on semantic roles and local tension.
+
+### Fixed Experimental Conditions
+
+- **3 Data Providers**: legal, ethical, technical  
+- **3 documents per provider** (9 documents total)  
+- **3 queries** designed to trigger safe integration, required separation, and canonical mixing  
+- Same:
+  - vector indexes
+  - retrieved fragments
+  - language model
+  - decoding parameters
+
+This ensures that observed differences are attributable **only** to context composition.
 
 ---
 
@@ -69,49 +80,43 @@ In short:
 
 ```
 dsrag-inferential-control/
-├── context_builders/
-│   ├── base.py               # Baseline RAG: direct fragment concatenation
-│   ├── hard_separation.py    # Grouping by Data Provider (DP)
-│   └── semantic_control.py   # Inferential composition control
-│
-├── core.py                   # Shared utilities (document loading, indexing, retrieval)
-├── evaluation/
-│   └── indicators.py         # Qualitative indicators used in analysis
-│
 ├── data/
-│   ├── dp1/                  # Legal data provider corpus
-│   ├── dp2/                  # Ethical data provider corpus
-│   └── dp3/                  # Technical data provider corpus
+│   ├── dp1/                  # Legal documents
+│   ├── dp2/                  # Ethical documents
+│   └── dp3/                  # Technical documents
 │
-├── indexes/                  # Vector indexes per provider
+├── indexes/
+│   └── federated/            # FAISS indexes per provider
+│
+├── queries.py                # Fixed set of evaluation queries
+│
+├── run_experiment.py         # Main experiment runner (S1, S2, S3)
+│
+├── context_builders/
+│   ├── base.py               # S1: baseline concatenation
+│   ├── hard_separation.py    # S2: provider-based separation
+│   └── semantic_control.py   # S3: inferential composition control
+│
+├── semantic/
+│   ├── role_assignment.py    # Semantic role assignment
+│   └── tension.py            # Local semantic tension computation
+│
+├── llm/
+│   └── generate.py           # LLM invocation wrapper
+│
+├── evaluation/
+│   ├── indicators.py         # Qualitative evaluation indicators
+│   └── human_template.json   # Template for manual review
+│
 ├── results/
-│   └── results_semantic_homeostasis.json
+│   └── *.json                # Contexts, prompts and responses
 │
 └── README.md
 ```
 
 ---
 
-## Context Construction Strategies
-
-### Baseline (Standard RAG)
-
-All retrieved fragments are concatenated into a single context with minimal provenance tagging.
-This configuration represents **standard RAG behavior**.
-
-### Hard Separation
-
-Retrieved fragments are grouped by Data Provider.  
-Provenance is preserved, but inferential interactions are not explicitly controlled.
-
-### Inferential Composition Control
-
-Fragments are assigned lightweight **semantic roles** and combined using **selective separation**
-and **conservative composition** to prevent inferential collapse.
-
----
-
-## How to Run the Experiments
+## How to Reproduce the Experiment
 
 ### Requirements
 
@@ -130,35 +135,62 @@ Create a `.env` file:
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-### Corpus
+---
 
-The repository includes a ready-to-use corpus under `data/`, organized by Data Provider.
+### 1. Prepare the Corpus
 
-### Indexing
+Place the documents in:
 
-Build vector indexes per provider:
-
-```bash
-python core.py
+```
+data/dp1/
+data/dp2/
+data/dp3/
 ```
 
-### Execution
+Each provider should contain **three documents**.
 
-Select the desired context builder in the experiment script:
+---
 
-- `base.py` → baseline
-- `hard_separation.py` → hard separation
-- `semantic_control.py` → inferential control
+### 2. Build Vector Indexes
 
-Each run produces structured outputs under `results/`.
+Create FAISS indexes for each Data Provider using the indexing utilities (e.g., via `core.create_faiss_index`).  
+Indexes are stored under `indexes/federated/`.
+
+---
+
+### 3. Run the Experiment
+
+Execute the **single experimental runner**, which evaluates all three strategies:
+
+```bash
+python run_experiment.py
+```
+
+This script:
+- runs the same retrieval pipeline for each query,
+- applies S1, S2 and S3 sequentially,
+- invokes the LLM with identical parameters,
+- stores full traces (contexts, prompts, outputs) in `results/`.
+
+---
+
+## Practical Notes
+
+- Temperature is set to **0** to ensure deterministic behavior.
+- The same model instance is used across all configurations.
+- Context construction is the **only experimental variable**.
+- All intermediate artifacts are stored for auditability and qualitative inspection.
 
 ---
 
 ## Reproducibility Notes
 
-- All configurations use the same corpus, queries, and retrieval results.
-- Differences in outputs are attributable **only** to context construction strategy.
-- Deterministic decoding is recommended to reproduce the results reported in the paper.
+This repository is designed to support:
+- controlled comparison,
+- reasoning traceability,
+- qualitative evaluation of inferential behavior.
+
+It is **not** intended as a production-ready RAG system.
 
 ---
 
